@@ -40,7 +40,7 @@ var locCST = time.FixedZone("CST", 28800)
 
 var Default = New(0)
 
-func SetDefault(node, epoch int64) {
+func SetDefault(node, epoch uint64) {
 	Default.mu.Lock()
 	defer Default.mu.Unlock()
 
@@ -51,22 +51,22 @@ func SetDefault(node, epoch int64) {
 	Default.epoch = epoch
 }
 
-func New(node int64) *ID {
+func New(node uint64) *ID {
 	return (&ID{}).Set(node, 0)
 }
 
 //53位， 兼容js
 type ID struct {
-	node  int64 //节点
-	epoch int64 //纪元时间（序号时间起始）
+	node  uint64 //节点
+	epoch uint64 //纪元时间（序号时间起始）
 
-	time     int64 //时间
-	sequence int64 //序列号
+	time     uint64 //时间
+	sequence uint64 //序列号
 
 	mu sync.Mutex
 }
 
-func (s *ID) Set(node, epoch int64) *ID {
+func (s *ID) Set(node uint64, epoch uint64) *ID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -79,11 +79,11 @@ func (s *ID) Set(node, epoch int64) *ID {
 	return s
 }
 
-func (s *ID) Generate() int64 {
+func (s *ID) Generate() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	now := time.Now().Unix()
+	now := uint64(time.Now().Unix())
 	seq := s.sequence
 	if now <= s.time {
 		if now < s.time {
@@ -101,43 +101,43 @@ func (s *ID) Generate() int64 {
 	return s.Build(now, seq, s.node)
 }
 
-func (s *ID) Build(unixTs int64, seq int64, node int64) int64 {
+func (s *ID) Build(unixTs uint64, seq uint64, node uint64) uint64 {
 	return (unixTs-s.epoch)<<timeShift | seq<<sequenceShift | node
 }
 
-func (s *ID) Parse(id int64) (unixTs int64, seq int64, node int64) {
+func (s *ID) Parse(id uint64) (unixTs uint64, seq uint64, node uint64) {
 	unixTs = id>>timeShift + s.epoch
 	seq = id>>sequenceShift - id>>timeShift<<sequenceBits
 	node = id - id>>sequenceShift<<sequenceShift
 	return
 }
 
-func (s *ID) ParseString(sid string, radix int) (unixTs int64, seq int64, node int64) {
+func (s *ID) ParseString(sid string, radix int) (unixTs uint64, seq uint64, node uint64) {
 	if radix < 2 {
 		radix = 36
 	}
-	i, _ := strconv.ParseInt(sid, radix, 64)
+	i, _ := strconv.ParseUint(sid, radix, 64)
 	return s.Parse(i)
 }
 
-func (s *ID) Format(id int64, radix int) string {
+func (s *ID) Format(id uint64, radix int) string {
 	if radix < 2 {
 		radix = 36
 	}
-	return strconv.FormatInt(id, radix)
+	return strconv.FormatUint(id, radix)
 }
 
-func (s *ID) FormatHuman(id int64) string {
+func (s *ID) FormatHuman(id uint64) string {
 	unixTs, seq, node := s.Parse(id)
-	return fmt.Sprintf("%s%05d%02d", time.Unix(unixTs, 0).In(locCST).Format(timeFormat), seq, node)
+	return fmt.Sprintf("%s%05d%02d", time.Unix(int64(unixTs), 0).In(locCST).Format(timeFormat), seq, node)
 }
 
-func (s *ID) ParseHumanString(hid string) (unixTs int64, seq int64, node int64) {
+func (s *ID) ParseHumanString(hid string) (unixTs uint64, seq uint64, node uint64) {
 	if len(hid) == 21 {
 		tim, _ := time.ParseInLocation(timeFormat, hid[:14], locCST)
-		unixTs = tim.Unix()
-		seq, _ = strconv.ParseInt(hid[14:19], 10, 64)
-		node, _ = strconv.ParseInt(hid[19:], 10, 64)
+		unixTs = uint64(tim.Unix())
+		seq, _ = strconv.ParseUint(hid[14:19], 10, 64)
+		node, _ = strconv.ParseUint(hid[19:], 10, 64)
 	}
 	return
 }
